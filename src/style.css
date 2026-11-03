@@ -35,6 +35,43 @@ html, body {
 .brand__title { font-size: 26px; margin: 4px 0; }
 .brand__desc { font-size: 13px; opacity: 0.7; }
 
+#ui > .fade { position: absolute; inset: 0; background: #fbf6ee; opacity: 0; pointer-events: none; }
+
+.quick {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 8px 8px;
+  background: var(--paper);
+  backdrop-filter: blur(10px);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+.quick__title { font-size: 10px; letter-spacing: 0.25em; color: var(--accent); padding: 0 10px 4px; }
+
+.dock__btn,
+.quick__btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.quick__btn { padding: 9px 12px; font-size: 14px; border-radius: 12px; }
+.quick__btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.85); }
+.quick__btn.is-active,
+.quick__btn.is-active:hover { background: var(--accent); color: #fff; }
+.quick__btn:disabled { opacity: 0.4; cursor: default; }
+
 .caption {
   position: absolute;
   top: 18%;
@@ -65,29 +102,146 @@ html, body {
   max-width: calc(100vw - 32px);
 }
 
-.dock__btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 16px;
-  border: 0;
-  border-radius: 14px;
-  background: transparent;
-  font: inherit;
-  font-size: 15px;
-  color: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s;
-}
+.dock__btn { padding: 12px 16px; font-size: 15px; }
 .dock__btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.85); transform: translateY(-2px); }
 .dock__btn.is-active,
 .dock__btn.is-active:hover { background: var(--accent); color: #fff; }
 .dock__btn:disabled { opacity: 0.4; cursor: default; }
 
+/* 교복 선택 팝업 */
+#ui.is-dressing .quick,
+#ui.is-dressing .dock { display: none; }
+
+.wardrobe {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  width: min(400px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  overflow-y: auto;
+  background: rgba(255, 250, 242, 0.92);
+  backdrop-filter: blur(12px);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+.wardrobe[hidden] { display: none; }
+.wardrobe__eyebrow { font-size: 11px; letter-spacing: 0.25em; color: var(--accent); }
+.wardrobe__title { font-size: 24px; margin: 4px 0; }
+.wardrobe__sub { font-size: 13px; opacity: 0.7; line-height: 1.5; }
+.wardrobe__label { font-size: 12px; letter-spacing: 0.08em; opacity: 0.6; margin-top: 4px; }
+
+.wardrobe__nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wardrobe__count { font-size: 14px; text-align: center; flex: 1; }
+.wardrobe__step,
+.wrow__arrow {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(45, 42, 38, 0.08);
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+  flex: none;
+}
+.wardrobe__step:hover,
+.wrow__arrow:hover:not(:disabled) { background: rgba(45, 42, 38, 0.16); }
+
+.wardrobe__presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.preset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.75);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.preset:hover { background: #fff; }
+.preset.is-active { border-color: var(--accent); background: #fff; }
+.preset strong { font-size: 14px; }
+.preset small { font-size: 11px; opacity: 0.65; line-height: 1.4; }
+.preset__swatches { display: flex; gap: 3px; }
+.preset__swatches i { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.15); }
+
+.wardrobe__accent { display: flex; flex-direction: column; gap: 8px; }
+.wardrobe__accent small { font-size: 11px; letter-spacing: 0; opacity: 0.8; margin-left: 4px; }
+.accents { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.accent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 8px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.75);
+  font: inherit;
+  font-size: 14px;
+  color: inherit;
+  cursor: pointer;
+}
+.accent i { width: 18px; height: 18px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0, 0, 0, 0.12); }
+.accent:hover { background: #fff; }
+.accent.is-on { border-color: var(--c); background: #fff; box-shadow: 0 2px 10px rgba(60, 40, 20, 0.12); }
+
+.wardrobe__rows { display: flex; flex-direction: column; gap: 6px; }
+.wrow { display: flex; align-items: center; gap: 8px; }
+.wrow__label { width: 64px; font-size: 13px; opacity: 0.7; flex: none; }
+.wrow__value { flex: 1; text-align: center; font-size: 14px; padding: 7px 4px; background: rgba(255, 255, 255, 0.75); border-radius: 10px; }
+.wrow__arrow { width: 30px; height: 30px; font-size: 17px; }
+.wrow.is-locked { opacity: 0.4; }
+.wrow__arrow:disabled { cursor: default; }
+
+.wardrobe__start { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wardrobe__start[hidden] { display: none; }
+.seg { display: flex; padding: 3px; gap: 3px; background: rgba(45, 42, 38, 0.08); border-radius: 12px; }
+.seg button { border: 0; padding: 7px 14px; border-radius: 10px; background: transparent; font: inherit; font-size: 13px; color: inherit; cursor: pointer; }
+.seg button.is-on { background: #fff; box-shadow: 0 2px 8px rgba(60, 40, 20, 0.12); }
+
+.wardrobe__go {
+  margin-top: auto;
+  padding: 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  flex: none;
+  position: sticky;
+  bottom: 0;
+  box-shadow: 0 6px 20px rgba(201, 111, 79, 0.35);
+}
+.wardrobe__go:hover { filter: brightness(1.05); }
+
+@media (max-width: 720px) {
+  .wardrobe { top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 52vh; padding: 14px; }
+  .wardrobe__head .wardrobe__sub { display: none; }
+  .wardrobe__presets { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+  .preset { flex: 0 0 150px; scroll-snap-align: start; }
+}
+
 @media (max-width: 600px) {
   .brand { top: 16px; left: 16px; padding: 12px 16px; }
   .brand__title { font-size: 20px; }
+  .brand__desc { display: none; }
+  .quick { top: 16px; right: 16px; padding: 6px; gap: 2px; }
+  .quick__title { display: none; }
+  .quick__btn { padding: 7px 9px; font-size: 12px; gap: 4px; }
   .dock { bottom: 16px; gap: 4px; padding: 6px; }
   .dock__btn { flex-direction: column; gap: 2px; padding: 8px 10px; font-size: 12px; }
 }

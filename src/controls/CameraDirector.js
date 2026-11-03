@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import gsap from 'gsap';
 
-const FOLLOW_OFFSET = new THREE.Vector3(0, 10, 17);
+const FOLLOW_OFFSET = new THREE.Vector3(0, 12, 22);
 const FOLLOW_HEIGHT = 1.2;
 
 export class CameraDirector {
@@ -9,6 +9,7 @@ export class CameraDirector {
     this.camera = camera;
     this.controls = controls;
     this.avatar = avatar;
+    this.offset = FOLLOW_OFFSET.clone();
     this.mode = 'follow';
     this.timeline = null;
     this._delta = new THREE.Vector3();
@@ -59,12 +60,20 @@ export class CameraDirector {
   follow(duration = 1.4) {
     const tl = this.#begin('return');
     const target = this.avatar.position.clone().setY(FOLLOW_HEIGHT);
-    this.#tweenTo(tl, { camera: target.clone().add(FOLLOW_OFFSET), target }, duration);
+    this.#tweenTo(tl, { camera: target.clone().add(this.offset), target }, duration);
     tl.add(() => {
       this.mode = 'follow';
       this.controls.enabled = true;
     });
     return tl;
+  }
+
+  // 장면 전환(화면이 가려진 동안) 시 카메라를 즉시 옮김
+  jump({ camera, target }) {
+    this.timeline?.kill();
+    this.mode = 'intro';
+    this.camera.position.copy(camera);
+    this.controls.target.copy(target);
   }
 
   get isFollowing() {

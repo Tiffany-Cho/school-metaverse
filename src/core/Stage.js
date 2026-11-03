@@ -12,15 +12,15 @@ export class Stage {
     this.renderer.toneMappingExposure = 1.05;
 
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 900);
     this.camera.position.set(0, 14, 22);
 
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
     this.controls.enablePan = false;
-    this.controls.minDistance = 6;
-    this.controls.maxDistance = 45;
+    this.controls.minDistance = 4;
+    this.controls.maxDistance = 110;
     this.controls.maxPolarAngle = Math.PI * 0.46;
 
     this.clock = new THREE.Clock();
