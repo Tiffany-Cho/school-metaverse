@@ -231,7 +231,7 @@ html, body {
 @media (max-width: 720px) {
   .wardrobe { top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 52vh; padding: 14px; }
   .wardrobe__head .wardrobe__sub { display: none; }
-  .wardrobe__presets { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+  .wardrobe__presets { display: flex; flex: none; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
   .preset { flex: 0 0 150px; scroll-snap-align: start; }
 }
 
