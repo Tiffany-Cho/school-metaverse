@@ -22,7 +22,7 @@ export class CameraDirector {
   update(dt) {
     if (this.mode !== 'follow') return;
     this._focus.copy(this.avatar.position).setY(FOLLOW_HEIGHT);
-    this._delta.subVectors(this._focus, this.controls.target).multiplyScalar(1 - Math.exp(-6 * dt));
+    this._delta.subVectors(this._focus, this.controls.target).multiplyScalar(1 - Math.exp(-4 * dt));
     this.controls.target.add(this._delta);
     this.camera.position.add(this._delta);
   }

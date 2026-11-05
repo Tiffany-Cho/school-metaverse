@@ -2,12 +2,141 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#fbe3c8" />
     <title>영파여고 온라인 캠퍼스</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet" />
+    <!-- 로딩 화면은 스크립트·CSS 번들보다 먼저 보여야 해서 여기 인라인으로 둠 -->
+    <style>
+      html, body { margin: 0; height: 100%; background: #fbe3c8; }
+      #loader {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 24px;
+        overflow: hidden;
+        background: linear-gradient(170deg, #fdeedd 0%, #fbe3c8 42%, #f6d3d9 78%, #e6dcf0 100%);
+        color: #4a3f36;
+        font-family: 'Gowun Dodum', system-ui, sans-serif;
+        text-align: center;
+        transition: opacity 0.9s ease, visibility 0.9s;
+      }
+      #loader.is-done { opacity: 0; visibility: hidden; }
+
+      .loader__scene { position: relative; width: 220px; height: 120px; }
+      .loader__school {
+        position: absolute;
+        right: 6px;
+        bottom: 14px;
+        width: 92px;
+        height: 62px;
+        border-radius: 6px 6px 2px 2px;
+        background: #fffaf2;
+        box-shadow: 0 6px 18px rgba(120, 80, 50, 0.12);
+      }
+      .loader__school::before {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: -26px;
+        transform: translateX(-50%);
+        border: 46px solid transparent;
+        border-top: 0;
+        border-bottom: 26px solid #d98a7a;
+        width: 0;
+        margin-left: 0;
+      }
+      .loader__school::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        width: 18px;
+        height: 24px;
+        transform: translateX(-50%);
+        border-radius: 9px 9px 0 0;
+        background: #c9935f;
+        box-shadow: -28px -22px 0 -4px #b9d6e8, 28px -22px 0 -4px #b9d6e8;
+      }
+      .loader__road { position: absolute; left: 0; right: 0; bottom: 10px; height: 4px; border-radius: 2px; background: rgba(120, 90, 60, 0.18); }
+      .loader__walker {
+        position: absolute;
+        left: 0;
+        bottom: 12px;
+        font-size: 34px;
+        line-height: 1;
+        animation: walk 3.2s ease-in-out infinite;
+      }
+      .loader__walker span { display: inline-block; animation: bob 0.5s ease-in-out infinite alternate; }
+
+      .loader__title { margin: 0; font-size: clamp(21px, 6vw, 26px); font-weight: 400; letter-spacing: 0.02em; line-height: 1.4; word-break: keep-all; }
+      .loader__title span { display: inline-block; }
+      .loader__title i { font-style: normal; display: inline-block; animation: dot 1.4s infinite; }
+      .loader__title i:nth-child(2) { animation-delay: 0.25s; }
+      .loader__bar {
+        width: min(260px, 70vw);
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.65);
+        box-shadow: inset 0 1px 3px rgba(120, 80, 50, 0.12);
+        overflow: hidden;
+      }
+      .loader__bar i {
+        display: block;
+        width: 12%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #f0a7b4, #c96f4f);
+        transition: width 0.7s ease;
+      }
+      .loader__foot { position: absolute; bottom: max(28px, env(safe-area-inset-bottom)); margin: 0; padding: 0 16px; font-size: 12px; letter-spacing: 0.2em; color: #c96f4f; }
+
+      .loader__petal {
+        position: absolute;
+        top: -20px;
+        width: 10px;
+        height: 8px;
+        border-radius: 10px 0 10px 0;
+        background: #f4b6c2;
+        opacity: 0.8;
+        animation: fall linear infinite;
+      }
+
+      @keyframes walk { 0% { transform: translateX(0); } 70%, 100% { transform: translateX(134px); } }
+      @keyframes bob { to { transform: translateY(-4px); } }
+      @keyframes dot { 0%, 60%, 100% { opacity: 0.2; } 30% { opacity: 1; } }
+      @keyframes fall {
+        0% { transform: translate(0, 0) rotate(0); }
+        100% { transform: translate(-60px, 110vh) rotate(540deg); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .loader__walker, .loader__walker span, .loader__petal, .loader__title i { animation: none; }
+        .loader__walker { transform: translateX(60px); }
+      }
+    </style>
   </head>
   <body>
+    <div id="loader" role="status" aria-live="polite">
+      <i class="loader__petal" style="left: 12%; animation-duration: 9s"></i>
+      <i class="loader__petal" style="left: 34%; animation-duration: 11s; animation-delay: -4s"></i>
+      <i class="loader__petal" style="left: 58%; animation-duration: 8s; animation-delay: -2s"></i>
+      <i class="loader__petal" style="left: 79%; animation-duration: 12s; animation-delay: -7s"></i>
+      <i class="loader__petal" style="left: 92%; animation-duration: 10s; animation-delay: -5s"></i>
+      <div class="loader__scene" aria-hidden="true">
+        <div class="loader__school"></div>
+        <div class="loader__road"></div>
+        <div class="loader__walker"><span>🎒</span></div>
+      </div>
+      <h2 class="loader__title">등교중 ㅠㅠ <span><i>.</i><i>.</i>🎒</span></h2>
+      <div class="loader__bar" role="progressbar" aria-label="불러오는 중" aria-valuemin="0" aria-valuemax="100" aria-valuenow="12"><i></i></div>
+      <p class="loader__foot">YOUNGPA GIRLS' HIGH SCHOOL</p>
+    </div>
     <canvas id="scene"></canvas>
     <div id="ui"></div>
     <script type="module" src="/src/main.js"></script>

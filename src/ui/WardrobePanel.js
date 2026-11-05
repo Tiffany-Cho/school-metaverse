@@ -91,16 +91,6 @@ export class WardrobePanel {
         this.#render();
       } else if (e.target.closest('.wardrobe__go')) this.#confirm();
     });
-
-    window.addEventListener('keydown', (e) => {
-      if (!this.isOpen || e.target.closest?.('input, textarea')) return;
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        e.preventDefault();
-        this.#stepPreset(e.key === 'ArrowLeft' ? -1 : 1);
-      } else if (e.key === 'Enter' && !e.target.closest?.('button')) {
-        this.#confirm();
-      }
-    });
   }
 
   open(outfit, { first = false } = {}) {

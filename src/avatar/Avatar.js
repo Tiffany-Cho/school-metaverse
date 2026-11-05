@@ -2,12 +2,30 @@ import * as THREE from 'three';
 import gsap from 'gsap';
 import { canvasTexture } from '../world/parts.js';
 import { PARTS, normalizeOutfit } from './Wardrobe.js';
+import { makeTray } from '../world/Meal.js';
 
 const TORSO_Y = 1.17;
 const TORSO_LEN = 0.36;
 const NECK_Y = TORSO_Y + TORSO_LEN / 2; // 몸통 위쪽 반구의 중심
 // 안쪽 → 바깥쪽으로 갈수록 커지는 반지름. 겉옷이 항상 제일 바깥에 보이게 함
 const R = { inner: 0.34, mid: 0.356, outer: 0.374 };
+
+// 팔 회전(lx·rx: 음수면 앞으로 듦, lz·rz: 안쪽으로 모음. 왼팔은 lz 음수, 오른팔은 rz 양수면 옆으로 들어 올림),
+// 상체 숙임(lean), 옆으로 기울이기(side). loop은 그 값까지 계속 왔다 갔다 하는 반복 동작
+const REST = { lx: 0, lz: 0, rx: 0, rz: 0, lean: 0, side: 0 };
+export const POSES = {
+  stand: { ...REST },
+  carry: { ...REST, lx: -1.05, lz: 0.32, rx: -1.05, rz: -0.32 },
+  sit: { ...REST, lx: -0.35, rx: -0.35 },
+  stretch: { ...REST, lz: -2.75, rz: 2.75, side: -0.24, loop: { side: 0.24, duration: 0.9 }, bubble: '🤸 체조하는 중' },
+  badminton: { ...REST, lx: -0.5, lz: -0.3, rx: -0.5, rz: 0.9, loop: { rx: -2.7, duration: 0.32 }, bubble: '🏸 배드민턴 치는 중' },
+  run: { ...REST, lx: -0.3, rx: -0.3, lean: 0.14, bubble: '🏃 달리는 중' },
+  study: { ...REST, lx: -1.05, lz: 0.2, rx: -1.1, rz: -0.2, lean: 0.1, bubble: '📖 공부 중' },
+  nap: { ...REST, lx: -1.5, lz: 0.35, rx: -1.5, rz: -0.35, lean: 0.32, bubble: '💤 낮잠 자는 중' },
+  hungry: { ...REST, lx: -0.6, lz: 0.55, rx: -0.6, rz: -0.55, bubble: '🍚 배고파…' },
+  eat: { ...REST, lx: -0.9, lz: 0.15, rx: -1.3, rz: -0.25, loop: { rx: -2.3 }, bubble: '🍱 급식 먹는 중' },
+  drink: { ...REST, lx: -0.5, rx: -2.5, rz: -0.35, bubble: '💧 물 마시는 중' },
+};
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, ...extra });
 
@@ -158,8 +176,153 @@ export class Avatar {
     this.walking = false;
     this.busy = false;
     this.walkPhase = 0;
+    // 앉기: seat 0 → 1로 섞으며 다리를 앞으로 접고 엉덩이를 의자 높이로 내림
+    this.seat = 0;
+    this.seatTarget = 0;
+    this.seatDrop = 0;
+    this.running = false;
+    // 두 손으로 받쳐 드는 급식 식판 (평소엔 숨김)
+    this.tray = makeTray();
+    this.tray.group.position.set(0, 1.0, 0.5);
+    this.tray.group.visible = false;
+    this.body.add(this.tray.group);
+    // 배드민턴 라켓 (오른손)
+    this.racket = new THREE.Group();
+    const frame = std('#3d5a80', { roughness: 0.4 });
+    this.racket.add(
+      mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.42, 8), frame, 0, -0.72, 0),
+      mesh(new THREE.TorusGeometry(0.13, 0.014, 6, 20), frame, 0, -1.04, 0),
+      mesh(new THREE.CircleGeometry(0.125, 20), std('#ffffff', { transparent: true, opacity: 0.35, side: THREE.DoubleSide }), 0, -1.04, 0),
+    );
+    this.racket.rotation.y = Math.PI / 2;
+    this.racket.visible = false;
+    this.armR.add(this.racket);
+    // 팔·상체 자세 (공부/낮잠 등). update에서 걷기 흔들림 위에 더해짐
+    this.pose = { ...POSES.stand };
+    this.bubble = this.#buildBubble();
+    this.nameplate = this.#buildBubble();
+    // 둘 다 머리 위 같은 점에 붙이고, 화면에서 이름표 바로 위에 말풍선이 오도록 기준점을 올림
+    this.nameplate.scale.set(0.16, 0.04, 1);
+    this.nameplate.center.set(0.5, 0);
+    this.bubble.center.set(0.5, -0.95);
+    this.root.add(this.bubble, this.nameplate);
     this.applyOutfit(outfit);
     scene.add(this.root);
+  }
+
+  #buildBubble() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const map = new THREE.CanvasTexture(canvas);
+    map.colorSpace = THREE.SRGBColorSpace;
+    // 카메라가 멀어져도 읽을 수 있게 화면 기준 크기로 그림
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthTest: false, sizeAttenuation: false }));
+    sprite.scale.set(0.2, 0.05, 1);
+    sprite.position.y = 2.3;
+    sprite.renderOrder = 10;
+    sprite.visible = false;
+    sprite.userData.canvas = canvas;
+    return sprite;
+  }
+
+  // 머리 위 말풍선 (빈 문자열이면 숨김)
+  say(text) {
+    const sprite = this.bubble;
+    if (!text) {
+      sprite.visible = false;
+      return;
+    }
+    const canvas = sprite.userData.canvas;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = `600 52px 'Gowun Dodum', system-ui, sans-serif`;
+    const w = Math.min(ctx.measureText(text).width + 70, canvas.width - 8);
+    const x = (canvas.width - w) / 2;
+    ctx.fillStyle = 'rgba(255,250,242,0.95)';
+    ctx.strokeStyle = 'rgba(45,42,38,0.18)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(x, 10, w, 96, 48);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#2d2a26';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, canvas.width / 2, 60);
+    sprite.material.map.needsUpdate = true;
+    sprite.visible = true;
+  }
+
+  // 머리 위 이름표: [나] 동그라미 + 닉네임
+  setName(name, { mine = true } = {}) {
+    const sprite = this.nameplate;
+    const canvas = sprite.userData.canvas;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = `600 50px 'Gowun Dodum', system-ui, sans-serif`;
+    const badge = mine ? 74 : 0;
+    const w = Math.min(ctx.measureText(name).width + 64 + badge, canvas.width - 8);
+    const x = (canvas.width - w) / 2;
+    ctx.fillStyle = 'rgba(255,250,242,0.9)';
+    ctx.beginPath();
+    ctx.roundRect(x, 16, w, 92, 46);
+    ctx.fill();
+    if (mine) {
+      ctx.fillStyle = '#c96f4f';
+      ctx.beginPath();
+      ctx.arc(x + 50, 62, 32, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `600 36px 'Gowun Dodum', system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('나', x + 50, 64);
+      ctx.font = `600 50px 'Gowun Dodum', system-ui, sans-serif`;
+    }
+    ctx.fillStyle = '#2d2a26';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, x + badge + (w - badge) / 2, 64);
+    sprite.material.map.needsUpdate = true;
+    sprite.visible = true;
+  }
+
+  // drop: 서 있을 때보다 몸을 얼마나 내릴지 (의자 높이에 맞춤)
+  sitDown(drop) {
+    this.seatDrop = drop;
+    this.seatTarget = 1;
+    this.act('sit');
+  }
+
+  standUp() {
+    this.seatTarget = 0;
+    this.act('stand');
+  }
+
+  get seated() {
+    return this.seatTarget === 1;
+  }
+
+  // 자세 바꾸기: POSES의 이름. 먹기처럼 반복 동작이 있는 자세는 loop로 팔을 계속 움직임
+  act(name) {
+    // 식판을 들고 있으면 서 있는 자세는 두 손으로 받쳐 든 자세
+    if (name === 'stand' && this.tray.group.visible) name = 'carry';
+    const { loop, bubble, ...target } = POSES[name];
+    gsap.killTweensOf(this.pose);
+    gsap.to(this.pose, { ...target, duration: 0.55, ease: 'power2.inOut' });
+    if (loop) gsap.to(this.pose, { duration: 0.45, ...loop, delay: 0.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+    this.racket.visible = name === 'badminton';
+    this.say(bubble ?? '');
+  }
+
+  // 식판 들기: 음식 id 목록, null이면 내려놓음
+  setTray(items) {
+    const holding = Array.isArray(items);
+    this.tray.set(holding ? items : []);
+    const changed = this.tray.group.visible !== holding;
+    this.tray.group.visible = holding;
+    if (changed && !this.seated) this.act('stand');
   }
 
   #buildHead() {
@@ -495,23 +658,41 @@ export class Avatar {
     if (this.busy) return;
     this.busy = true;
     const tl = gsap.timeline({ onComplete: () => (this.busy = false) });
-    tl.to(this.armR.rotation, { z: 2.7, duration: 0.3, ease: 'back.out(2)' })
+    // 가볍게 목례한 뒤 손을 흔듦
+    const lean = this.pose.lean;
+    tl.to(this.pose, { lean: lean + 0.28, duration: 0.3, ease: 'power2.out' })
+      .to(this.pose, { lean, duration: 0.35, ease: 'power2.inOut' }, '+=0.15')
+      .to(this.armR.rotation, { z: 2.7, duration: 0.3, ease: 'back.out(2)' }, '-=0.1')
       .to(this.armR.rotation, { x: 0.35, duration: 0.18, yoyo: true, repeat: 5, ease: 'sine.inOut' })
-      .to(this.body.position, { y: 0.15, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.out' }, 0.3)
+      .to(this.body.position, { y: 0.15, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.out' }, '<')
       .to(this.armR.rotation, { z: 0, x: 0, duration: 0.35, ease: 'power2.inOut' });
     return tl;
   }
 
   update(dt) {
     const target = this.walking ? 1 : 0;
-    this.walkAmount = THREE.MathUtils.damp(this.walkAmount ?? 0, target, 10, dt);
-    this.walkPhase += dt * 10 * this.walkAmount;
+    this.walkAmount = THREE.MathUtils.damp(this.walkAmount ?? 0, target, 8, dt);
+    // 느린 보행에 맞춰 발걸음도 천천히 (달릴 땐 빠르게)
+    this.walkPhase += dt * (this.running ? 13 : 6.5) * this.walkAmount;
     const s = Math.sin(this.walkPhase) * this.walkAmount;
+    this.seat = THREE.MathUtils.damp(this.seat, this.seatTarget, 7, dt);
+    const p = this.pose;
 
-    this.legL.rotation.x = s * 0.5;
-    this.legR.rotation.x = -s * 0.5;
-    this.armL.rotation.x = -s * 0.5;
-    if (!this.busy) this.armR.rotation.x = s * 0.5;
-    if (!this.busy) this.body.position.y = Math.abs(Math.sin(this.walkPhase)) * 0.08 * this.walkAmount;
+    const legs = -1.4 * this.seat;
+    // 달릴 땐 다리·팔을 크게, 식판을 들었을 땐 팔은 흔들지 않음
+    const legSwing = this.running ? 0.8 : 0.4;
+    const armSwing = this.tray.group.visible ? 0 : this.running ? 0.9 : 0.35;
+    this.legL.rotation.x = s * legSwing + legs;
+    this.legR.rotation.x = -s * legSwing + legs;
+    this.armL.rotation.x = -s * armSwing + p.lx;
+    this.armL.rotation.z = p.lz;
+    if (!this.busy) {
+      this.armR.rotation.x = s * armSwing + p.rx;
+      this.armR.rotation.z = p.rz;
+    }
+    this.body.rotation.x = p.lean;
+    this.body.rotation.z = p.side;
+    const bob = Math.abs(Math.sin(this.walkPhase)) * (this.running ? 0.12 : 0.06) * this.walkAmount;
+    if (!this.busy || this.seated) this.body.position.y = bob - this.seatDrop * this.seat;
   }
 }

@@ -5,22 +5,29 @@ export const WALK_ZONE = { x: [-24, 40.5], z: [-34, 21], door: null };
 
 const PLAYGROUND = { x: 8, z: -10 };
 
-export function createEnvironment(scene) {
-  const skyTop = new THREE.Color('#7fb4e6');
-  const skyBottom = new THREE.Color('#fbe3c8');
-
+// 하늘 돔 + 지평선 안개 (운동장과 건물 내부 창밖 풍경이 같이 씀)
+export function createSky(scene, { top = '#7fb4e6', bottom = '#fbe3c8', fog = [130, 340] } = {}) {
+  const skyTop = new THREE.Color(top);
+  const skyBottom = new THREE.Color(bottom);
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(400, 32, 16),
     new THREE.ShaderMaterial({
       side: THREE.BackSide,
       depthWrite: false,
+      fog: false,
       uniforms: { top: { value: skyTop }, bottom: { value: skyBottom } },
       vertexShader: `varying float h; void main(){ h = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
       fragmentShader: `uniform vec3 top; uniform vec3 bottom; varying float h; void main(){ gl_FragColor = vec4(mix(bottom, top, smoothstep(-0.05, 0.45, h)), 1.0); }`,
     }),
   );
+  sky.userData.noShadow = sky.userData.noPick = true;
   scene.add(sky);
-  scene.fog = new THREE.Fog(skyBottom, 130, 340);
+  scene.fog = new THREE.Fog(skyBottom, ...fog);
+  return sky;
+}
+
+export function createEnvironment(scene) {
+  createSky(scene);
 
   scene.add(new THREE.HemisphereLight('#cfe6ff', '#8a7a5a', 1.1));
 
@@ -64,7 +71,7 @@ function flat(w, d, color, x, z, y) {
   return m;
 }
 
-function createTrack() {
+export function createTrack(at = PLAYGROUND) {
   const shape = new THREE.Shape();
   const inner = new THREE.Path();
   roundedRect(shape, 24, 14, 12);
@@ -76,12 +83,12 @@ function createTrack() {
     new THREE.MeshStandardMaterial({ color: '#c96f4f', roughness: 0.95 }),
   );
   track.rotation.x = -Math.PI / 2;
-  track.position.set(PLAYGROUND.x, 0.03, PLAYGROUND.z);
+  track.position.set(at.x, 0.03, at.z);
   track.receiveShadow = true;
   return track;
 }
 
-function createFieldLines() {
+export function createFieldLines(at = PLAYGROUND) {
   const lineMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.7, depthWrite: false });
   const g = new THREE.Group();
   const mid = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 18), lineMat);
@@ -90,7 +97,7 @@ function createFieldLines() {
     m.rotation.x = -Math.PI / 2;
     g.add(m);
   }
-  g.position.set(PLAYGROUND.x, 0.035, PLAYGROUND.z);
+  g.position.set(at.x, 0.035, at.z);
   return g;
 }
 
@@ -129,8 +136,7 @@ function treeSpots() {
   return spots;
 }
 
-function createTrees() {
-  const spots = treeSpots();
+export function createTrees(spots = treeSpots()) {
   const COUNT = spots.length;
   const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2, 6);
   const leafGeo = new THREE.IcosahedronGeometry(1.8, 0);
